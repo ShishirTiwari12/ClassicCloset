@@ -2,6 +2,7 @@ const User = require("../models/user");
 const crypto = require("crypto");
 const VerificationToken = require("../models/verificationToken");
 const { sendVerificationEmail } = require("../utils/mailer");
+const bcrypt = require("bcrypt");
 
 let newUser;
 const signup = async (req, res) => {
@@ -46,46 +47,59 @@ const signup = async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.send(
-      '<h1>database error :<a href="/signup.html">clicke here to go back</a></h1>'
+      '<h1>database error :<a href="/signup.html">clicke here to go back</a></h1>',
     );
   }
 };
 
 const login = async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    if (email == "admin" && password == "admin123") {
+    // Admin login
+    if (email === "admin" && password === "admin123") {
       req.session.user = { email, username: "admin" };
       return res.json({ location: "/admin" });
     }
-    const existingUser = await User.findOne({ email: email });
+
+    // Find user
+    const existingUser = await User.findOne({ email });
+
     if (!existingUser) {
       return res.send(
-        '<h1>account not found</h1><a href="/index.html">click here to go back</a>'
+        '<h1>Account not found</h1><a href="/index.html">Click here to go back</a>',
       );
     }
-    if (existingUser.password != password) {
+
+    // Compare entered password with hashed password
+    const isMatch = await bcrypt.compare(password, existingUser.password);
+
+    if (!isMatch) {
       return res.json({
-        message: "incorrect password",
+        message: "Incorrect password",
         location: "/auth.html",
       });
     }
-    if (existingUser.verified == false) {
+
+    // Check email verification
+    if (!existingUser.verified) {
       return res.json({
-        message: "incorrect password",
+        message: "Please verify your email before logging in.",
         location: "/auth.html",
       });
     }
-    const user = await User.findOne({ email: email });
-    const username = user.username;
-    req.session.user = { email, username };
-    // return res.send(`<h1>welcome Mr.${user.username} your session created succesfully<a href="../index.html">click to go to homepage</a></h1>`);
-    // return res.redirect('http://localhost:3000/index.html');
+
+    // Create session
+    req.session.user = {
+      email: existingUser.email,
+      username: existingUser.username,
+    };
+
     return res.json({ location: "/" });
   } catch (err) {
-    console.log(`database error : ${err}`);
+    console.log(`Database error: ${err}`);
     return res.send(
-      '<h1>database  error </h1><a href="/index.html">click here to go back</a>'
+      '<h1>Database error</h1><a href="/index.html">Click here to go back</a>',
     );
   }
 };

@@ -38,7 +38,7 @@ app.use(
 
       maxAge: 1000 * 60 * 60 * 24,
     },
-  })
+  }),
 );
 
 app.use((req, res, next) => {
